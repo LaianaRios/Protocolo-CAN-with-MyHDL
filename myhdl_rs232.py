@@ -1,32 +1,42 @@
-# Simulação de uma comunicação entre dois nós utilizando comunicação serial.
+# ------------ Trabalho de Redes Digitais e Industriais ------------
+# ---------------- Professor: Diego Stéfano (Dinho) ----------------
+# ------------------------ Atividade: MyHDL ------------------------
+# ----------------- Protocolo: CAN 2.0A - STANDART -----------------
+# --------- Equipe: Laiana Rios, Robson Barbosa, Samuel Dias -------
+
+
+# Simulação de uma comunicação entre dois nós utilizando comunicação serial
 # A simulação consiste de um mestre enviando um pacote de 10 bits (7 de dados,
-# 1 de paridade, 1 de start e 1 de stop) a um escravo.
-# O pacote é pré-codificado dentro do bloco mestre.
-# No escravo ele é armazenado dentro de uma lista, bit a bit, à medida que é recebido.
+# 1 de paridade, 1 de start e 1 de stop) a um escravo
+# O pacote é pré-codificado dentro do bloco mestre
+# No escravo ele é armazenado dentro de uma lista, bit a bit, à medida que é recebido
 
 from myhdl import block, delay, always, now, Signal
 
 from fGeral import *
 
-# Bloco Escravo: define estrutura do bloco que receberá o pacote do mestre.
-# recebe dois sinais:
-# "clock": necessário para a simulaçao funcionar.
-# "dados": onde o escravo vai ler os bits enviados pelo mestre.
+# Bloco Escravo: define estrutura do bloco que receberá o pacote do mestre
+# Recebe dois sinais:
+# "clock": necessário para a simulaçao funcionar
+# "dados": onde o escravo vai ler os bits enviados pelo mestre
+
 @block
 def Escravo(clock, dados):
-    # Este bloco contém propriedades, variáveis que gardam informações sobre o bloco.
-    # As propriedades podem ser alteráveis ou constantes.
-    # Foram aplicados a estrutura de dado dicionário de Python para representar os estados.
+    # Este bloco contém propriedades, variáveis que guardam informações sobre o bloco
+    # As propriedades podem ser alteráveis ou constantes
+    # Foram aplicados a estrutura de dados dicionário de Python para representar os estados
     
     # constantes: dicionário que contém estados que não mudam ao longo da execução.
     constantes = {
         'tamanho_quadro': 127
     }
 
-    # estado: dicionário que contém estados que podem mudar durante a execução.
+    # estado: dicionário que contém estados que podem mudar durante a execução
     estado = {
-        'barramento_inativo': True, # <--- item do dicionário que descreve o estado do barramento.
-        'contagem_bits': 0,          # <--- item do dicionário que descreve quantos bitas foram recebidos.
+        # Item do dicionário que descreve o estado do barramento
+        'barramento_inativo': True,   
+        # Item do dicionário que descreve quantos bits foram recebidos
+        'contagem_bits': 0,          
         
         'SOF':'', #BIT[0]
         'ARBITRATION':'',#BIT[1:11]
@@ -46,21 +56,19 @@ def Escravo(clock, dados):
     #         item "tamanho_quadro" do dicionário "constantes", e é acessado com a linha: constantes['tamanho_quadro']
     quadro = [0] * constantes['tamanho_quadro']
     
-    
     # função "leitura": é chamada a cada subida do clock;
     # o seu funcionamento depende do status do barramento:
-    #
-    #    se o barramento estiver ativo então:
-    #        se a qtd de bits recebida é igual ao tamanho do quadro (ou seja, se a trasnmissão acabou) então:
-    #            faz o barramento inativo novamente
-    #            reseta a contagem de bits para 0 novamente
-    #        senão (ou seja, se a transimissão ainda não acabou):
-    #            o bit do quadro na posição igual ao contador de bits é igual ao bit presente no sinal "dados"
-    #            e soma um à contagem de bits
-    #    se o barramento estiver inativo e o sinal "dados" tiver valor 1 (ou seja, não comunicação no barramente e o escravo recebe o start bit do quadro):
-    #        muda o estado do barramento para ativo
-    #        e guarda o start bit na primeira posição do quadro (porque a contagem de bits está em zero).
-    #
+    # se o barramento estiver ativo então:
+    # se a qtd de bits recebida é igual ao tamanho do quadro (ou seja, se a trasnmissão acabou) então:
+    # faz o barramento inativo novamente
+    # reseta a contagem de bits para 0 novamente
+    # senão (ou seja, se a transimissão ainda não acabou):
+    # o bit do quadro na posição igual ao contador de bits é igual ao bit presente no sinal "dados"
+    # e soma um à contagem de bits
+    # se o barramento estiver inativo e o sinal "dados" tiver valor 1 (ou seja, não comunicação no barramente e o escravo recebe o start bit do quadro):
+    # muda o estado do barramento para ativo
+    # e guarda o start bit na primeira posição do quadro (porque a contagem de bits está em zero).
+    
     @always(clock.posedge)
     def leitura():
         if not estado['barramento_inativo']:
@@ -86,10 +94,10 @@ def Escravo(clock, dados):
 
                 print(estado)
 
-                #remove o encapsulamento da mensagem
+                # Remove o encapsulamento da mensagem
                 msg = estado['DATA']+estado['CRC']
 
-                # Analisa a paridade -> # Retira o bit inserido
+                # Analisa a paridade -> Retira o bit inserido
                 msg = paridadesOFF(''.join(str(e) for e in msg))
 
                 # Chave do CRC
@@ -128,16 +136,11 @@ def Escravo(clock, dados):
             #quadro[estado['contagem_bits']] = str(dados)
             #estado['contagem_bits'] += 1
 
-    # todo bloco sempre retorna as funções (e somente as funções) definidas dentro dele.
+    # Todo bloco sempre retorna as funções (e somente as funções) definidas dentro dele.
     return leitura
 
-
-
-
-
-
-# Bloco Mestre: define estrutura do bloco que enviará o pacote para o escravo.
-# recebe dois sinais:
+# Bloco Mestre: define estrutura do bloco que enviará o pacote para o escravo
+# Recebe dois sinais:
 # "clock": necessário para a simulaçao funcionar.
 # "dados": onde o mestre vai colocar os bits a serem enviados para o escravo.
 @block
@@ -146,16 +149,17 @@ def Mestre(clock, dados):
         'tamanho_quadro': 127
     }
 
-    # o mestre manda no barramento, por isso ele pode assumir que o barramento está livre,
+    # O mestre manda no barramento, por isso ele pode assumir que o barramento está livre,
     # uma vez que apenas ele escreve no barramento.
-    # então o único estado variável que ele precisa manter é quantos bits já foram enviados.
+    # Então o único estado variável que ele precisa manter é quantos bits já foram enviados.
     estado = {
         'contagem_bits': 0
     }
-    #Teste de envio! 
+    
+    # Teste de envio! 
     quadro = [1, 1, 0, 1, 1, 0, 1, 0, 0, 1]
 
-    #chamar o encode aqui
+    # Chamar o encode aqui
     msg = input("DIGITE A MENSAGEM EM BINARIO QUE VOCÊ DESEJA ENVIAR: ")
 
     print("MENSAGEM RECEBIDA:    ",msg)
@@ -171,12 +175,12 @@ def Mestre(clock, dados):
     # Entra com o verificador de segurança!
     ans = paridadesIN(ans)
 
-    print("MENSAGEM COM Paridade:    ",ans)
-
+    print("MENSAGEM COM PARIDADE:    ",ans)
 
     # Faz o encapsulamento da mensagem
     
-    ativador="1" # Ativa o barramento manualmente...
+    # Ativa o barramento manualmente...
+    ativador= "1" 
 
     encap = "0100110001000001000" #len = 19
     encap2 = "011111111" #len = 9
@@ -185,23 +189,19 @@ def Mestre(clock, dados):
     
     print("MENSAGEM ENCAPSULADA E ENVIADA:    ",ans)
 
-
     quadro = list(map(int, str(ans)))
 
     print("Tamanho da mensagem: ",len(quadro))
 
-    # função "escrita": é chamada a cada subida do clock;
-    # pseudocódigo de funcionamento:
-    #
-    #   se o contador de bits enviados for menor que o tamanho do quadro (ou seja, ainda há bits a enviar) então:
-    #       põe o próximo bit no sinal dados
-    #       e incremente contador de bits
-    #   senão (ou seja, se todos os bits já foram enviados):
-    #       coloca o barramento em nível inativo, que é o bit 0
-    #
+    # Função "escrita": é chamada a cada subida do clock;
+    # Pseudocódigo de funcionamento:
+    # Se o contador de bits enviados for menor que o tamanho do quadro (ou seja, ainda há bits a enviar) então:
+    # Põe o próximo bit no sinal dados e incremente contador de bits, senão (ou seja, se todos os bits já foram enviados):
+    # Coloca o barramento em nível inativo, que é o bit 0
+    
     @always(clock.posedge)
     def escrita():
-        #TODO TAMANHO DO QUADRO VARIAVEL, NECESSIDADE DE ADAPTAÇÃO DO CODIGO
+        # TODO TAMANHO DO QUADRO VARIAVEL, NECESSIDADE DE ADAPTAÇÃO DO CODIGO
         if estado['contagem_bits'] < constantes['tamanho_quadro'] and estado['contagem_bits'] < len(quadro):
             #print("BIT ",estado['contagem_bits']," ENVIADO", quadro[estado['contagem_bits']])
             dados.next = quadro[estado['contagem_bits']]
@@ -214,37 +214,29 @@ def Mestre(clock, dados):
 # Block Top: bloco que cria e conecta os nós.
 @block
 def Top():
-    clock_global = Signal(0) # criação do sinal de clock que vai atuar nos nós.
-    dados = Signal(0) # criação do sinal que representa o barramento.
+    # Criação do sinal de clock que vai atuar nos nós
+    clock_global = Signal(0) 
+    # Criação do sinal que representa o barramento
+    dados = Signal(0) 
     dados2 = Signal(1)
 
-    escravo = Escravo(clock_global, dados) # criação de um escravo conectado ao clock e ao barramento.
-    escravo2 = Escravo(clock_global, dados2) # criação de um escravo conectado ao clock e ao barramento.
+    # Criação de um escravo conectado ao clock e ao barramento
+    escravo = Escravo(clock_global, dados) 
+    # Criação de um escravo conectado ao clock e ao barramento
+    escravo2 = Escravo(clock_global, dados2) 
     
-    mestre = Mestre(clock_global, dados) # ciração de um mestre conectado ao clock e ao barramento.
-    mestre2 = Mestre(clock_global, dados2) # ciração de um mestre conectado ao clock e ao barramento.
-
+    # Criação de um mestre conectado ao clock e ao barramento
+    mestre = Mestre(clock_global, dados) 
+    # Criação de um mestre conectado ao clock e ao barramento
+    mestre2 = Mestre(clock_global, dados2) 
     
-    #                                          __II_
-    #                                         /     \
-    #                                        /_______\
-    #                                        |  _  0 |
-    #                                        | | |   |
-    ################################################################################################
-    # DEVER DE CASA 4                                                                              #
-    ################################################################################################
-    # Crie um segundo escravo e simule um barramento com esses dois escravos. Utilize o mecanismo  #
-    # de endereçamento do seu protocolo (por exemplo, o ID na rede CAN) para diferenciar entre os  #
-    # escravos.                                                                                    #
-    ################################################################################################
-
-    # Função que gera sinal de clock alternando o nível lógico do sinal "clock_global" a cada 10ns.
+    # Função que gera sinal de clock alternando o nível lógico do sinal "clock_global" a cada 10ns
     @always(delay(10))
     def clock():
         clock_global.next = not clock_global
 
     # Retorna funções criadas dentro do bloco Top.
-    return clock, escravo,escravo2, mestre, mestre2
+    return clock, escravo, escravo2, mestre, mestre2
 
 
 # Até agora, apenas estruturas de blocos foram definidas. Chegou a hora de criar instâncias e executá-las.
